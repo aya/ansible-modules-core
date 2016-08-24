@@ -247,8 +247,6 @@ class FreeBsdGroup(Group):
 
 # ===========================================
 
-
-
 class DarwinGroup(Group):
     """
     This is a Mac OS X Darwin Group manipulation class.
@@ -291,6 +289,8 @@ class DarwinGroup(Group):
             (rc, out, err) = self.execute_command(cmd)
             return (rc, out, err)
         return (None, '', '')
+
+# ===========================================
 
 class OpenBsdGroup(Group):
     """
@@ -373,6 +373,56 @@ class NetBsdGroup(Group):
             return (0, '', '')
         cmd.append(self.name)
         return self.execute_command(cmd)
+
+# ===========================================
+
+class AlpineGroup(Group):
+    """
+    This is a Alpine Group manipulation class.
+
+    This overrides the following methods from the generic class:-
+      - group_del()
+      - group_add()
+      - group_mod()
+    """
+
+    platform = 'Linux'
+    distribution = 'Alpine'
+    GROUPFILE = '/etc/group'
+
+    def group_del(self):
+        cmd = [self.module.get_bin_path('delgroup', True), self.name]
+        return self.execute_command(cmd)
+
+    def group_add(self, **kwargs):
+        cmd = [self.module.get_bin_path('addgroup', True)]
+        if self.gid is not None:
+            cmd.append('-g')
+            cmd.append('%d' % int(self.gid))
+        if self.system == True:
+            cmd.append('-S')
+        cmd.append(self.name)
+        return self.execute_command(cmd)
+
+    def group_mod(self, **kwargs):
+        info = self.group_info()
+        # delete the group and create a new one
+        if (self.gid is not None and int(self.gid) != info[2]) or \
+           (self.system == True and info[2] >= 1000) or \
+           (self.system == False and info[2] < 1000):
+            cmd = [self.module.get_bin_path('delgroup', True), self.name]
+            self.execute_command(cmd)
+            cmd = [self.module.get_bin_path('addgroup', True)]
+            if self.gid is not None:
+                cmd.append('-g')
+                cmd.append('%d' % int(self.gid))
+            if self.system == True:
+                cmd.append('-S')
+            cmd.append(self.name)
+            if self.module.check_mode:
+                return (0, '', '')
+            return self.execute_command(cmd)
+        return (None, '', '')
 
 # ===========================================
 
